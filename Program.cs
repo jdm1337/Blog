@@ -2,13 +2,16 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace Blog
 {
     class Program
     {
-        static void Main(string[] args)
+        async static Task Main(string[] args)
         {
             Console.WriteLine("Hello World!");
 
@@ -30,6 +33,16 @@ namespace Blog
             // Petr: 2
             // Elena: 3
 
+            var firstTaskData = context.BlogComments
+                .GroupBy(c => c.UserName)
+                .Select(c => new
+                {
+                    c.Key,
+                    Count = c.Count()
+                });
+            
+            Console.WriteLine(JsonSerializer.Serialize(firstTaskData));
+
             Console.WriteLine("Posts ordered by date of last comment. Result should include text of last comment:");
             //ToDo: write a query and dump the data to console
             // Expected result (format could be different, e.g. object serialized to JSON is ok):
@@ -37,7 +50,18 @@ namespace Blog
             // Post1: '2020-03-05', '8'
             // Post3: '2020-02-14', '9'
 
-
+            var secondTaskData = context.BlogPosts
+                .Include(p => p.Comments)
+                .Select(p => new
+                {
+                    Title = p.Title,
+                    CreatedDate = p.Comments.OrderByDescending(c => c.CreatedDate).FirstOrDefault().CreatedDate,
+                    Text = p.Comments.OrderByDescending(c => c.CreatedDate).FirstOrDefault().Text,
+                })
+                .OrderByDescending(p => p.CreatedDate);
+            
+            Console.WriteLine(JsonSerializer.Serialize(secondTaskData));
+            
             Console.WriteLine("How many last comments each user left:");
             // 'last comment' is the latest Comment in each Post
             //ToDo: write a query and dump the data to console
@@ -45,7 +69,21 @@ namespace Blog
             // Ivan: 2
             // Petr: 1
 
-            
+            var thirdTaskData = context.BlogPosts
+                .Include((p => p.Comments))
+                .Select(p => new
+                {
+                    UserName= p.Comments.OrderByDescending(c => c.CreatedDate).FirstOrDefault().UserName
+                })
+                .GroupBy(c => c.UserName)
+                .Select(c => new
+                {
+                    c.Key,
+                    Count = c.Count()
+                });
+            Console.WriteLine(JsonSerializer.Serialize(thirdTaskData));
+
+
             // Console.WriteLine(
             //     JsonSerializer.Serialize(BlogService.NumberOfCommentsPerUser(context)));
             // Console.WriteLine(
